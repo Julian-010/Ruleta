@@ -26,21 +26,26 @@
 
 <script>
   const premios = [
-    { texto: "💋 BESO", prob: 0.5, color: "#e74c3c" },
-    { texto: "🍸 Copa para ti", prob: 0, color: "#f39c12" },
-    { texto: "🍹 Copa para mi", prob: 0.1, color: "#27ae60" },
-    { texto: "😏 Pico", prob: 0.1, color: "#8e44ad" },
-    { texto: "🍑 Nalgada", prob: 0.05, color: "#d35400" },
-    { texto: "🤝 Jugar otra vez", prob: 0.2, color: "#34495e" }
-  ];
+    { texto: "💋 Beso", prob: 0.1111, color: "#e74c3c" },          // rojo intenso
+    { texto: "🤭 Susurro travieso", prob: 0.1111, color: "#f1c40f" }, // amarillo dorado
+    { texto: "👄 Mordisquito", prob: 0.1111, color: "#2ecc71" },    // verde claro
+    { texto: "😏 Pico", prob: 0.1111, color: "#9b59b6" },          // morado
+    { texto: "🍑 Nalgada", prob: 0.1111, color: "#e67e22" },       // naranja
+    { texto: "🤫 Secreto", prob: 0.1111, color: "#1abc9c" },       // turquesa
+    { texto: "💥 Toque juguetón", prob: 0.1111, color: "#34495e" },// azul oscuro
+    { texto: "🎯 Reto divertido", prob: 0.1111, color: "#d35400" }, // naranja oscuro
+    { texto: "💋 Beso en el cuello", prob: 0.1111, color: "#9e2a2b" } // rojo oscuro
+]
+;
 
-  const totalProb = premios.reduce((sum, p) => sum + p.prob, 0);
+  // Solo premios con prob > 0 para elegir
+  const premiosValidos = premios.filter(p => p.prob > 0);
+  const totalProb = premiosValidos.reduce((sum, p) => sum + p.prob, 0);
 
   // Canvas responsive
   const canvas = document.getElementById("ruleta");
   const ctx = canvas.getContext("2d");
 
-  // Ajustar tamaño responsive (máximo 400px)
   function ajustarCanvas() {
     const maxSize = 400;
     const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.7, maxSize);
@@ -55,7 +60,6 @@
 
   let startAngle = 0;
   let arc = (2 * Math.PI) / premios.length;
-
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
   let radius = Math.min(centerX, centerY) - 20;
@@ -65,7 +69,6 @@
   let spinTimeTotal = 0;
   let spinAngleStart = 0;
 
-  // Dibujar segmento
   function drawSegment(index, angleStart, arc) {
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
@@ -92,7 +95,6 @@
     }
   }
 
-  // Función easing para desacelerar la rueda (easeOutCubic)
   function easeOutCubic(t, b, c, d) {
     t /= d;
     t--;
@@ -111,40 +113,50 @@
     spinTimeout = setTimeout(spin, 30);
   }
 
-  function stopRotateWheel() {
+    function stopRotateWheel() {
     clearTimeout(spinTimeout);
 
-    // Ajustar para obtener el índice del premio
     const degrees = (startAngle * 180 / Math.PI + 90) % 360;
     const degreesPerSegment = 360 / premios.length;
     const index = premios.length - Math.floor(degrees / degreesPerSegment) - 1;
 
-    const igUsuario = document.getElementById("instagram").value.trim();
+    let igUsuario = document.getElementById("instagram").value.trim();
+    if (igUsuario.startsWith("@")) {
+        igUsuario = igUsuario.substring(1);
+    }
 
     document.getElementById("resultado").innerHTML = `<p>Usuario IG: <strong>@${igUsuario}</strong></p><p>Resultado: <strong>${premios[index].texto}</strong></p>`;
 
     document.getElementById("instagram").disabled = false;
     document.getElementById("btnJugar").disabled = false;
     document.getElementById("btnJugar").innerText = "Jugar de nuevo";
-  }
+    }
+
 
   function elegirPremio() {
     let r = Math.random() * totalProb;
     let acumulado = 0;
-    for (let i = 0; i < premios.length; i++) {
-      acumulado += premios[i].prob;
-      if (r <= acumulado) return i;
+    for (let i = 0; i < premiosValidos.length; i++) {
+      acumulado += premiosValidos[i].prob;
+      if (r <= acumulado) {
+        // Ahora devolver el índice del premio original en premios
+        return premios.indexOf(premiosValidos[i]);
+      }
     }
-    return premios.length - 1;
+    return premios.indexOf(premiosValidos[premiosValidos.length - 1]);
   }
 
   function iniciarRuleta() {
-    const ig = document.getElementById("instagram").value.trim();
+    let ig = document.getElementById("instagram").value.trim();
+
+    // Quitar @ si está al principio
+    if (ig.startsWith("@")) {
+        ig = ig.substring(1);
+    }
     if (!ig) {
       alert("Introduce tu usuario de Instagram");
       return;
     }
-    // Validar caracteres simples (opcional)
     if (!/^@?[a-zA-Z0-9._]+$/.test(ig)) {
       alert("Usuario Instagram no válido");
       return;
@@ -158,7 +170,7 @@
     document.getElementById("resultado").innerHTML = "";
     document.getElementById("ruletaContainer").style.display = "block";
 
-    // Guardar en Google Sheets
+    // Guardar en Google Sheets (deja la URL correcta)
     fetch("https://script.google.com/a/macros/mal.safanet.es/s/AKfycbzfcxGjVJntqMzoAdLregqtr4RTJQfQl2yL2n5rDmjOxpbza1lhFDrz819Zx3UZx8Yd/exec", {
       method: "POST",
       mode: "no-cors",
