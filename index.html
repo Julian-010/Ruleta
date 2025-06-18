@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ruleta Graduación</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="container">
+  <h1>🎉 Ruleta Graduación 🎉</h1>
+
+  <div id="formulario">
+    <input type="text" id="instagram" placeholder="Tu usuario de Instagram" autocomplete="off" />
+    <button id="btnJugar" onclick="iniciarRuleta()">Jugar</button>
+  </div>
+
+  <div id="ruletaContainer" style="display:none;">
+    <div id="flecha"></div>
+    <canvas id="ruleta"></canvas>
+  </div>
+
+  <div id="resultado"></div>
+</div>
+
+<script>
+  const premios = [
+    { texto: "💋 BESO", prob: 0.5, color: "#e74c3c" },
+    { texto: "🍸 Copa para ti", prob: 0, color: "#f39c12" },
+    { texto: "🍹 Copa para mi", prob: 0.1, color: "#27ae60" },
+    { texto: "😏 Pico", prob: 0.1, color: "#8e44ad" },
+    { texto: "🍑 Nalgada", prob: 0.05, color: "#d35400" },
+    { texto: "🤝 Jugar otra vez", prob: 0.2, color: "#34495e" }
+  ];
+
+  const totalProb = premios.reduce((sum, p) => sum + p.prob, 0);
+
+  // Canvas responsive
+  const canvas = document.getElementById("ruleta");
+  const ctx = canvas.getContext("2d");
+
+  // Ajustar tamaño responsive (máximo 400px)
+  function ajustarCanvas() {
+    const maxSize = 400;
+    const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.7, maxSize);
+    canvas.width = size;
+    canvas.height = size;
+  }
+  ajustarCanvas();
+  window.addEventListener("resize", () => {
+    ajustarCanvas();
+    drawWheel(startAngle);
+  });
+
+  let startAngle = 0;
+  let arc = (2 * Math.PI) / premios.length;
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  let radius = Math.min(centerX, centerY) - 20;
+
+  let spinTimeout = null;
+  let spinTime = 0;
+  let spinTimeTotal = 0;
+  let spinAngleStart = 0;
+
+  // Dibujar segmento
+  function drawSegment(index, angleStart, arc) {
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, angleStart, angleStart + arc, false);
+    ctx.closePath();
+    ctx.fillStyle = premios[index].color;
+    ctx.fill();
+
+    ctx.save();
+    ctx.fillStyle = "white";
+    ctx.translate(centerX, centerY);
+    ctx.rotate(angleStart + arc / 2);
+    ctx.textAlign = "right";
+    ctx.font = `${Math.floor(radius/12)}px Arial`;
+    ctx.fillText(premios[index].texto, radius - 10, 10);
+    ctx.restore();
+  }
+
+  function drawWheel(angle=0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    arc = (2 * Math.PI) / premios.length;
+    for (let i = 0; i < premios.length; i++) {
+      drawSegment(i, angle + i * arc, arc);
+    }
+  }
+
+  // Función easing para desacelerar la rueda (easeOutCubic)
+  function easeOutCubic(t, b, c, d) {
+    t /= d;
+    t--;
+    return c*(t*t*t + 1) + b;
+  }
+
+  function spin() {
+    spinTime += 30;
+    if (spinTime >= spinTimeTotal) {
+      stopRotateWheel();
+      return;
+    }
+    let spinAngle = easeOutCubic(spinTime, spinAngleStart, -spinAngleStart, spinTimeTotal);
+    startAngle += (spinAngle * Math.PI) / 180;
+    drawWheel(startAngle);
+    spinTimeout = setTimeout(spin, 30);
+  }
+
+  function stopRotateWheel() {
+    clearTimeout(spinTimeout);
+
+    // Ajustar para obtener el índice del premio
+    const degrees = (startAngle * 180 / Math.PI + 90) % 360;
+    const degreesPerSegment = 360 / premios.length;
+    const index = premios.length - Math.floor(degrees / degreesPerSegment) - 1;
+
+    const igUsuario = document.getElementById("instagram").value.trim();
+
+    document.getElementById("resultado").innerHTML = `<p>Usuario IG: <strong>@${igUsuario}</strong></p><p>Resultado: <strong>${premios[index].texto}</strong></p>`;
+
+    document.getElementById("instagram").disabled = false;
+    document.getElementById("btnJugar").disabled = false;
+    document.getElementById("btnJugar").innerText = "Jugar de nuevo";
+  }
+
+  function elegirPremio() {
+    let r = Math.random() * totalProb;
+    let acumulado = 0;
+    for (let i = 0; i < premios.length; i++) {
+      acumulado += premios[i].prob;
+      if (r <= acumulado) return i;
+    }
+    return premios.length - 1;
+  }
+
+  function iniciarRuleta() {
+    const ig = document.getElementById("instagram").value.trim();
+    if (!ig) {
+      alert("Introduce tu usuario de Instagram");
+      return;
+    }
+    // Validar caracteres simples (opcional)
+    if (!/^@?[a-zA-Z0-9._]+$/.test(ig)) {
+      alert("Usuario Instagram no válido");
+      return;
+    }
+
+    document.getElementById("instagram").disabled = true;
+    const btn = document.getElementById("btnJugar");
+    btn.disabled = true;
+    btn.innerText = "Girando...";
+
+    document.getElementById("resultado").innerHTML = "";
+    document.getElementById("ruletaContainer").style.display = "block";
+
+    // Guardar en Google Sheets
+    fetch("https://script.google.com/a/macros/mal.safanet.es/s/AKfycbzfcxGjVJntqMzoAdLregqtr4RTJQfQl2yL2n5rDmjOxpbza1lhFDrz819Zx3UZx8Yd/exec", {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `instagram=${encodeURIComponent(ig)}`
+    }).catch(() => {
+      alert("Error al guardar tu Instagram");
+      document.getElementById("instagram").disabled = false;
+      btn.disabled = false;
+      btn.innerText = "Jugar";
+    });
+
+    const premioIndex = elegirPremio();
+    const vueltas = 6;
+    const degreesPerSegment = 360 / premios.length;
+    const degreesToPrize = (premios.length - premioIndex) * degreesPerSegment - degreesPerSegment/2;
+
+    spinAngleStart = vueltas * 360 + degreesToPrize;
+    spinTime = 0;
+    spinTimeTotal = 5000;
+
+    spin();
+  }
+
+  drawWheel(startAngle);
+</script>
+
+</body>
+</html>
